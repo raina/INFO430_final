@@ -25,8 +25,7 @@ CREATE TABLE CUSTOMER_TYPE (
 
 CREATE TABLE GENDER (
     gender_id int IDENTITY(1,1) primary key,
-    gender_name varchar(20),
-    gender_descr varchar(100)
+    gender_name varchar(20)
 );
 
 CREATE TABLE COUNTRY (
@@ -79,7 +78,7 @@ CREATE TABLE BOOKING_REFUND (
 
 CREATE TABLE LANGUAGE (
     language_id INT IDENTITY(1,1) PRIMARY KEY,
-    language_name VARCHAR(10)
+    language_name VARCHAR(50)
 );
 
 CREATE TABLE CURRENCY (
@@ -102,7 +101,6 @@ CREATE TABLE ACCOUNT (
 
 CREATE TABLE ACCOUNT_LANGUAGE (
     language_in_use_id INT IDENTITY(1,1) PRIMARY KEY,
-    language_name VARCHAR(10),
     language_id INT,
     account_name VARCHAR(20),
     FOREIGN KEY (language_id) REFERENCES LANGUAGE(language_id),
@@ -111,7 +109,6 @@ CREATE TABLE ACCOUNT_LANGUAGE (
 
 CREATE TABLE ACCOUNT_CURRENCY (
     currency_in_use_id INT IDENTITY(1,1) PRIMARY KEY,
-    currency_name VARCHAR(10),
     currency_id INT,
     account_name VARCHAR(20),
     FOREIGN KEY (currency_id) REFERENCES CURRENCY(currency_id),
