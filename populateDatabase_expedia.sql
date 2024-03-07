@@ -186,3 +186,167 @@ GO
 -- EXEC wrapper_addCustomer 1000
 
 -- Add Rewards ----------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE wrapper_addRewards
+@RunNumber INT
+AS
+DECLARE
+    @w_points INT,
+    @w_date DATETIME,
+    @w_expiry DATETIME
+
+-- Vars for FK table row counts
+DECLARE @CustomerRowCount INT = (SELECT COUNT(*) FROM CUSTOMER)
+DECLARE @RewardTypeRowCount INT = (SELECT COUNT(*) FROM REWARD_TYPE)
+
+-- Vars for PK values
+DECLARE @CustomerPK INT, @RewardTypePK INT
+DECLARE @RAND INT
+
+-- Loop:
+WHILE @RunNumber > 0
+BEGIN
+    SET @CustomerPK = (SELECT RAND() * @CustomerRowCount + 1)
+    IF NOT EXISTS (SELECT * FROM customer WHERE customer_id = @CustomerPK)
+	    BEGIN
+	        PRINT 'Customer came back empty, running again'
+            SET @CustomerPK = (SELECT RAND() * @CustomerRowCount + 1)
+            IF NOT EXISTS (SELECT * FROM customer WHERE customer_id = @CustomerPK)
+            BEGIN
+                PRINT 'Customer came back empty a second time...running a third time'
+                SET @CustomerPK = (SELECT RAND() * @CustomerRowCount + 1)              
+                IF NOT EXISTS (SELECT * FROM customer WHERE customer_id = @CustomerPK)
+                    BEGIN
+                        SET @CustomerPK = 1
+                    END
+		    END
+	    END
+
+    SET @RewardTypePK = (SELECT RAND() * @RewardTypeRowCount + 1)
+    IF NOT EXISTS (SELECT * FROM REWARD_TYPE WHERE reward_type_id = @RewardTypePK)
+	    BEGIN
+	        PRINT 'Reward Type came back empty, running again'
+            SET @RewardTypePK = (SELECT RAND() * @RewardTypeRowCount + 1)
+            IF NOT EXISTS (SELECT * FROM REWARD_TYPE WHERE reward_type_id = @RewardTypePK)
+            BEGIN
+                PRINT 'Reward Type came back empty a second time...running a third time'
+                SET @RewardTypePK = (SELECT RAND() * @RewardTypeRowCount + 1)
+                IF NOT EXISTS (SELECT * FROM REWARD_TYPE WHERE reward_type_id = @RewardTypePK)
+                    BEGIN
+                        SET @RewardTypePK = 1
+                    END
+		    END
+	    END
+
+    SET @w_points = (SELECT RAND() * @RewardTypePK + 100)
+    SET @w_date = GETDATE()
+    SET @w_expiry = DATEADD(year, 1, @w_date)
+
+    INSERT INTO REWARD(reward_points, reward_date, expire_date, customer_id, reward_type_id)
+    VALUES(@w_points, @w_date, @w_expiry, @CustomerPK, @RewardTypePK)
+    
+    SET @RunNumber = @RunNumber - 1
+END
+
+GO
+
+-- Add rewards to table
+-- EXEC wrapper_addRewards 10000
+
+-- Add Bookings ----------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE wrapper_addBookings
+@RunNumber INT
+AS
+DECLARE 
+    @w_dateBooked DATE = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 1820 ), '2017-01-01'),
+    @w_price NUMERIC(8,2) = ROUND(RAND(CHECKSUM(NEWID())) * (1000), 2),
+    @w_paymentMethod VARCHAR(20) = 'Online',
+    @CustomerPK INT,
+    @RAND INT
+
+DECLARE @CustomerRowCount INT = (SELECT COUNT(*) FROM CUSTOMER)
+
+-- Loop:
+WHILE @RunNumber > 0
+BEGIN
+    SET @CustomerPK = (SELECT RAND() * @CustomerRowCount + 1)
+    IF NOT EXISTS (SELECT * FROM customer WHERE customer_id = @CustomerPK)
+	    BEGIN
+	        PRINT 'Customer came back empty, running again'
+            SET @CustomerPK = (SELECT RAND() * @CustomerRowCount + 1)
+            IF NOT EXISTS (SELECT * FROM customer WHERE customer_id = @CustomerPK)
+            BEGIN
+                PRINT 'Customer came back empty a second time...running a third time'
+                SET @CustomerPK = (SELECT RAND() * @CustomerRowCount + 1)              
+                IF NOT EXISTS (SELECT * FROM customer WHERE customer_id = @CustomerPK)
+                    BEGIN
+                        SET @CustomerPK = 1
+                    END
+		    END
+	    END
+
+    INSERT INTO BOOKING(customer_id, date_booked, total_price, payment_method)
+    VALUES(@CustomerPK, @w_dateBooked, @w_price, @w_paymentMethod)
+
+    SET @RunNumber = @RunNumber - 1
+END
+GO
+-- Add bookings
+-- EXEC wrapper_addBookings 10000
+
+-- Add Sub-Bookings ----------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE wrapper_AddSubAndDetail
+@RunNumber INT
+AS
+DECLARE
+    @w_subPrice NUMERIC(8,2),
+    @w_quantity INT,
+    @bookingPrice NUMERIC(8,2) = RAND()*(6-1)+1,
+    @statePK INT,
+    @bookingPK INT,
+    @subPK INT
+
+DECLARE @BookingRowCount INT = (SELECT COUNT(*) FROM BOOKING)
+DECLARE @StateRowCount INT = (SELECT COUNT(*) FROM [STATE])
+
+-- Loop:
+WHILE @RunNumber > 0
+BEGIN
+    -- Booking
+    SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)
+    IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
+	    BEGIN
+	        PRINT 'Booking came back empty, running again'
+            SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)              
+                IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
+                    BEGIN
+                        SET @BookingPK = 1
+                    END
+		END
+    -- State
+    SET @StatePK = (SELECT RAND() * @StateRowCount + 1)
+    IF NOT EXISTS (SELECT * FROM [STATE] WHERE state_id = @StatePK)
+	    BEGIN
+	        PRINT 'State came back empty, running again'
+            SET @StatePK = (SELECT RAND() * @StateRowCount + 1)
+                IF NOT EXISTS (SELECT * FROM [STATE] WHERE state_id = @StatePK)
+                    BEGIN
+                        SET @StatePK = 1
+                    END
+	    END
+
+    -- Price based on booking price
+    SET @bookingPrice = (SELECT total_price FROM BOOKING WHERE booking_id = @BookingPK)
+    SET @w_subPrice = RAND()*(@bookingPrice-1)+1
+
+    INSERT INTO SUB_BOOKING(sub_price, state_id)
+    VALUES (@w_subPrice, @StatePK)
+    SELECT @SubPK = SCOPE_IDENTITY();
+
+    INSERT INTO BOOKING_DETAIL(booking_id, sub_booking_id, quantity)
+    VALUES(@BookingPK, @SubPK, @w_quantity)
+    SET @RunNumber = @RunNumber - 1
+END
+GO
+-- Add sub bookings and details
+-- EXEC wrapper_AddSubAndDetail 10000
+
