@@ -257,11 +257,10 @@ CREATE OR ALTER PROCEDURE wrapper_addBookings
 @RunNumber INT
 AS
 DECLARE 
-    @w_dateBooked DATE = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 1820 ), '2017-01-01'),
-    @w_price NUMERIC(8,2) = ROUND(RAND(CHECKSUM(NEWID())) * (1000), 2),
+    @w_dateBooked DATE,
+    @w_price Numeric(8,2),
     @w_paymentMethod VARCHAR(20) = 'Online',
-    @CustomerPK INT,
-    @RAND INT
+    @CustomerPK INT
 
 DECLARE @CustomerRowCount INT = (SELECT COUNT(*) FROM CUSTOMER)
 
@@ -284,6 +283,9 @@ BEGIN
 		    END
 	    END
 
+    SET @w_dateBooked = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 1820 ), '2017-01-01')
+    SET @w_price = ROUND(RAND(CHECKSUM(NEWID())) * (1000), 2)
+
     INSERT INTO BOOKING(customer_id, date_booked, total_price, payment_method)
     VALUES(@CustomerPK, @w_dateBooked, @w_price, @w_paymentMethod)
 
@@ -299,7 +301,7 @@ CREATE OR ALTER PROCEDURE wrapper_AddSubAndDetail
 AS
 DECLARE
     @w_subPrice NUMERIC(8,2),
-    @w_quantity INT = ROUND(RAND()*(6-1)+1,0),
+    @w_quantity INT,
     @bookingPrice NUMERIC(8,2),
     @statePK INT,
     @bookingPK INT,
@@ -312,11 +314,11 @@ DECLARE @StateRowCount INT = (SELECT COUNT(*) FROM [STATE])
 WHILE @RunNumber > 0
 BEGIN
     -- Booking
-    SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)
+    SET @BookingPK = (SELECT RAND() * @BookingRowCount + 10000)
     IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
 	    BEGIN
 	        PRINT 'Booking came back empty, running again'
-            SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)              
+            SET @BookingPK = (SELECT RAND() * @BookingRowCount + 10000)              
                 IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
                     BEGIN
                         SET @BookingPK = 1
@@ -341,6 +343,8 @@ BEGIN
     INSERT INTO SUB_BOOKING(sub_price, state_id)
     VALUES (@w_subPrice, @StatePK)
     SELECT @SubPK = SCOPE_IDENTITY();
+
+    SET @w_quantity = ROUND(RAND()*(6-1)+1,0)
 
     INSERT INTO BOOKING_DETAIL(booking_id, sub_booking_id, quantity)
     VALUES(@BookingPK, @SubPK, @w_quantity)
@@ -367,11 +371,11 @@ DECLARE @BookingRowCount INT = (SELECT COUNT(*) FROM BOOKING)
 WHILE @RunNumber > 0
 BEGIN
     -- Booking
-    SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)
+    SET @BookingPK = (SELECT RAND() * @BookingRowCount + 10000)
     IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
 	    BEGIN
 	        PRINT 'Booking came back empty, running again'
-            SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)              
+            SET @BookingPK = (SELECT RAND() * @BookingRowCount + 10000)              
                 IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
                     BEGIN
                         SET @BookingPK = 1
@@ -397,7 +401,7 @@ CREATE OR ALTER PROCEDURE wrapper_addReviews
 @RunNumber INT
 AS
 DECLARE
-    @w_ratingNum INT = ROUND(RAND()*(5-1)+1,0),
+    @w_ratingNum INT,
     @w_reviewDesc VARCHAR(50) = 'Review text',
     @w_bookingDate DATE,
     @w_reviewDate DATE,
@@ -409,11 +413,11 @@ DECLARE @SubRowCount INT = (SELECT COUNT(*) FROM SUB_BOOKING)
 WHILE @RunNumber > 0
 BEGIN
     -- Sub Booking
-    SET @SubPK = (SELECT RAND() * @SubRowCount + 1)
+    SET @SubPK = (SELECT RAND() * @SubRowCount + 20000)
     IF NOT EXISTS (SELECT * FROM SUB_BOOKING WHERE sub_booking_id = @SubPK)
 	    BEGIN
 	        PRINT 'Sub Booking came back empty, running again'
-            SET @SubPK = (SELECT RAND() * @SubRowCount + 1)              
+            SET @SubPK = (SELECT RAND() * @SubRowCount + 20000)              
                 IF NOT EXISTS (SELECT * FROM SUB_BOOKING WHERE sub_booking_id = @SubPK)
                     BEGIN
                         SET @SubPK = 1
@@ -428,6 +432,7 @@ BEGIN
         WHERE sb.sub_booking_id = @SubPK)
 
     SET @w_reviewDate = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 364 ), @w_bookingDate)
+    SET @w_ratingNum = ROUND(RAND()*(5-1)+1,0)
 
     INSERT INTO REVIEW(sub_booking_id, rating_numeric, review_body, review_date)
     VALUES (@SubPK, @w_ratingNum, @w_reviewDesc, @w_reviewDate)
