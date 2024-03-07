@@ -299,8 +299,8 @@ CREATE OR ALTER PROCEDURE wrapper_AddSubAndDetail
 AS
 DECLARE
     @w_subPrice NUMERIC(8,2),
-    @w_quantity INT,
-    @bookingPrice NUMERIC(8,2) = RAND()*(6-1)+1,
+    @w_quantity INT = ROUND(RAND()*(6-1)+1,0),
+    @bookingPrice NUMERIC(8,2),
     @statePK INT,
     @bookingPK INT,
     @subPK INT
@@ -336,7 +336,7 @@ BEGIN
 
     -- Price based on booking price
     SET @bookingPrice = (SELECT total_price FROM BOOKING WHERE booking_id = @BookingPK)
-    SET @w_subPrice = RAND()*(@bookingPrice-1)+1
+    SET @w_subPrice = ROUND(RAND()*(@bookingPrice-1)+1,2)
 
     INSERT INTO SUB_BOOKING(sub_price, state_id)
     VALUES (@w_subPrice, @StatePK)
@@ -350,3 +350,90 @@ GO
 -- Add sub bookings and details
 -- EXEC wrapper_AddSubAndDetail 10000
 
+-- Add Refunds ----------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE wrapper_AddRefunds
+@RunNumber INT
+AS
+DECLARE
+    @w_refundDate DATE,
+    @w_refundAmount Numeric(8,2),
+    @BookingPK INT,
+    @maxPrice NUMERIC(8,2),
+    @bookingDate DATE
+
+DECLARE @BookingRowCount INT = (SELECT COUNT(*) FROM BOOKING)
+
+-- Loop:
+WHILE @RunNumber > 0
+BEGIN
+    -- Booking
+    SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)
+    IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
+	    BEGIN
+	        PRINT 'Booking came back empty, running again'
+            SET @BookingPK = (SELECT RAND() * @BookingRowCount + 1)              
+                IF NOT EXISTS (SELECT * FROM BOOKING WHERE booking_id = @BookingPK)
+                    BEGIN
+                        SET @BookingPK = 1
+                    END
+		END
+
+    SET @maxPrice = (SELECT total_price FROM BOOKING WHERE booking_id = @BookingPK)
+    SET @w_refundAmount = ROUND(RAND()*(@maxPrice-1)+1,2)
+
+    SET @bookingDate = (SELECT date_booked FROM BOOKING WHERE booking_id = @BookingPK)
+    SET @w_refundDate = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 31 ), @bookingDate) 
+
+    INSERT INTO BOOKING_REFUND(refund_date, refund_amount, booking_id)
+    VALUES(@w_refundDate, @w_refundAmount, @BookingPK)
+    SET @RunNumber = @RunNumber - 1
+END
+GO
+-- Add Refunds
+-- EXEC wrapper_AddRefunds 1000
+
+-- Add Reviews ----------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE wrapper_addReviews
+@RunNumber INT
+AS
+DECLARE
+    @w_ratingNum INT = ROUND(RAND()*(5-1)+1,0),
+    @w_reviewDesc VARCHAR(50) = 'Review text',
+    @w_bookingDate DATE,
+    @w_reviewDate DATE,
+    @SubPK INT
+
+DECLARE @SubRowCount INT = (SELECT COUNT(*) FROM SUB_BOOKING)
+
+-- Loop:
+WHILE @RunNumber > 0
+BEGIN
+    -- Sub Booking
+    SET @SubPK = (SELECT RAND() * @SubRowCount + 1)
+    IF NOT EXISTS (SELECT * FROM SUB_BOOKING WHERE sub_booking_id = @SubPK)
+	    BEGIN
+	        PRINT 'Sub Booking came back empty, running again'
+            SET @SubPK = (SELECT RAND() * @SubRowCount + 1)              
+                IF NOT EXISTS (SELECT * FROM SUB_BOOKING WHERE sub_booking_id = @SubPK)
+                    BEGIN
+                        SET @SubPK = 1
+                    END
+		END
+    
+    SET @w_bookingDate = (
+        SELECT b.date_booked
+        FROM BOOKING b
+            JOIN BOOKING_DETAIL bd ON bd.booking_id = b.booking_id
+            JOIN SUB_BOOKING sb ON sb.sub_booking_id = bd.sub_booking_id
+        WHERE sb.sub_booking_id = @SubPK)
+
+    SET @w_reviewDate = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 364 ), @w_bookingDate)
+
+    INSERT INTO REVIEW(sub_booking_id, rating_numeric, review_body, review_date)
+    VALUES (@SubPK, @w_ratingNum, @w_reviewDesc, @w_reviewDate)
+    SET @RunNumber = @RunNumber - 1
+END
+GO
+
+-- Add reviews
+-- EXEC wrapper_addReviews 5000
