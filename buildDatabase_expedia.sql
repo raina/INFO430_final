@@ -42,12 +42,12 @@ CREATE TABLE STATE (
 
 CREATE TABLE CUSTOMER (
     customer_id INT IDENTITY(1,1) PRIMARY KEY,
-    cust_Fname varchar (30),
-    cust_Lname varchar (30),
-    birth_date DATETIME,
-    address varchar(100),
-    city varchar(10),
-    postal_code INT,
+    cust_Fname varchar (60) NOT NULL,
+    cust_Lname varchar (60) NOT NULL,
+    birth_date DATE NULL,
+    address varchar(120) NULL,
+    city varchar(75),
+    postal_code varchar(25),
     state_id int references STATE(state_id),
     customer_type_id int references CUSTOMER_TYPE(customer_type_id),
     gender_id int references GENDER(gender_id)
@@ -236,19 +236,18 @@ GO
 -- ADD STATE
 CREATE OR ALTER PROCEDURE AddState
 @state_name VARCHAR(30),
-@country_name VARCHAR(50),
-@region_name VARCHAR(60)
+@country_name VARCHAR(50)
 AS
 BEGIN
     DECLARE @country_id INT
 
     SELECT @country_id = country_id
     FROM COUNTRY
-    WHERE country_name = @country_name AND region_name = @region_name
+    WHERE country_name = @country_name
 
     IF @country_id IS NULL
     BEGIN
-        PRINT 'Country not found or region mismatch. State cannot be added.'
+        PRINT 'Country not found. State cannot be added.'
         RETURN; -- Exiting the procedure if country or region not found.
     END
 
